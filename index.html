@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI 인플루언서 미리보기</title>
+<style>
+  :root {
+    --border: #dbdbdb;
+    --text: #262626;
+    --secondary: #8e8e8e;
+    --blue: #0095F6;
+    --bg: #fafafa;
+    --danger: #ed4956;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  button { font-family: inherit; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    background: #fff; border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 470px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+  }
+  .topbar h1 { font-size: 14px; margin: 0; font-weight: 600; color: var(--text); }
+  .topbar-actions { display: flex; gap: 4px; }
+  .icon-btn {
+    border: none; background: transparent; cursor: pointer;
+    padding: 6px; display: flex; align-items: center; justify-content: center;
+    color: var(--text); border-radius: 50%;
+  }
+  .icon-btn:hover { background: #f2f2f2; }
+  .view-tabs {
+    max-width: 470px; margin: 0 auto; display: flex;
+    border-bottom: 1px solid var(--border); background: #fff;
+  }
+  .tab-btn {
+    flex: 1; border: none; background: transparent; padding: 11px 0;
+    font-size: 13px; font-weight: 600; cursor: pointer; color: var(--secondary);
+    border-bottom: 2px solid transparent;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+
+  /* ---------- Phone frame ---------- */
+  .phone-wrap {
+    max-width: 470px; margin: 0 auto; background: #fff; min-height: 60vh;
+    border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ---------- Feed ---------- */
+  .post { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+  .post-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px;
+  }
+  .post-header-left { display: flex; align-items: center; gap: 10px; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%; object-fit: cover;
+    background: #efefef; flex-shrink: 0;
+  }
+  .avatar.lg { width: 77px; height: 77px; }
+  .username { font-weight: 600; font-size: 13px; }
+  .post-image-wrap { width: 100%; aspect-ratio: 1 / 1; background: #f2f2f2; overflow: hidden; }
+  .post-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .post-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px 4px;
+  }
+  .left-actions { display: flex; gap: 14px; }
+  .post-caption { padding: 4px 12px 2px; font-size: 13px; line-height: 1.4; }
+  .post-time { padding: 2px 12px 0; font-size: 10px; color: var(--secondary); text-transform: uppercase; letter-spacing: .2px; }
+
+  /* ---------- Empty state ---------- */
+  .empty-state {
+    text-align: center; padding: 60px 24px; color: var(--secondary);
+  }
+  .empty-state .big { font-size: 40px; margin-bottom: 10px; }
+  .empty-state button {
+    margin-top: 14px; border: none; background: var(--blue); color: #fff;
+    padding: 8px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer;
+  }
+
+  /* ---------- Grid / profile ---------- */
+  .profile-header { padding: 20px 16px 8px; }
+  .profile-top { display: flex; align-items: center; gap: 22px; }
+  .profile-stats { display: flex; gap: 22px; }
+  .stat-num { font-weight: 600; font-size: 16px; text-align: center; }
+  .stat-label { font-size: 12px; color: var(--secondary); text-align: center; }
+  .profile-username { font-weight: 600; font-size: 14px; margin-top: 12px; }
+  .profile-bio { font-size: 13px; margin-top: 2px; white-space: pre-wrap; color: var(--text); }
+  .grid-divider { border-top: 1px solid var(--border); margin-top: 16px; }
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+  }
+  .grid-item { aspect-ratio: 1/1; overflow: hidden; background: #f2f2f2; cursor: pointer; position: relative; }
+  .grid-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.6);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+    padding: 16px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal {
+    background: #fff; border-radius: 12px; width: 100%; max-width: 380px;
+    max-height: 88vh; overflow-y: auto; padding: 18px;
+  }
+  .modal h2 { font-size: 16px; margin: 0 0 14px; }
+  .modal label { font-size: 12px; font-weight: 600; color: var(--secondary); display: block; margin: 12px 0 4px; }
+  .modal input[type="text"], .modal textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 10px; font-size: 13px; font-family: inherit; resize: vertical;
+  }
+  .modal textarea { min-height: 70px; }
+  .file-drop {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 18px;
+    text-align: center; color: var(--secondary); font-size: 13px; cursor: pointer;
+    margin-top: 6px;
+  }
+  .preview-box { margin-top: 10px; text-align: center; }
+  .preview-box img { max-width: 100%; max-height: 220px; border-radius: 8px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 18px; }
+  .modal-actions button {
+    flex: 1; border: none; border-radius: 8px; padding: 10px; font-size: 13px;
+    font-weight: 600; cursor: pointer;
+  }
+  .btn-secondary { background: #f2f2f2; color: var(--text); }
+  .btn-primary { background: var(--blue); color: #fff; }
+  .btn-primary:disabled { opacity: .5; cursor: default; }
+  .btn-danger { background: #fff; color: var(--danger); border: 1px solid var(--border) !important; }
+  .avatar-picker { display: flex; align-items: center; gap: 14px; margin-top: 6px; }
+
+  /* ---------- Toast / loading ---------- */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #262626; color: #fff; padding: 10px 18px; border-radius: 20px;
+    font-size: 13px; z-index: 200; max-width: 90vw; text-align: center;
+  }
+  .toast.hidden { display: none; }
+  .loading-bar {
+    text-align: center; padding: 40px; color: var(--secondary); font-size: 13px;
+  }
+  .spinner {
+    width: 22px; height: 22px; border: 2px solid #e0e0e0; border-top-color: var(--blue);
+    border-radius: 50%; margin: 0 auto 10px; animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .config-banner {
+    max-width: 470px; margin: 10px auto 0; background: #fff8e1; border: 1px solid #ffe08a;
+    border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #6b5300; line-height: 1.5;
+  }
+  .config-banner code { background: #00000010; padding: 1px 4px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <h1>📸 AI 인플루언서 미리보기</h1>
+    <div class="topbar-actions">
+      <button class="icon-btn" id="settingsBtn" title="프로필 설정">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      <button class="icon-btn" id="uploadBtn" title="새 게시물">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M12 9v6M9 12h6"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="view-tabs">
+    <button class="tab-btn active" data-view="feed">피드</button>
+    <button class="tab-btn" data-view="grid">그리드</button>
+  </div>
+</div>
+
+<div id="configBanner" class="config-banner" style="display:none;">
+  ⚠️ 아직 백엔드가 연결되지 않았어요. <code>index.html</code> 안의 <code>SCRIPT_URL</code> 값을 배포한 Apps Script 웹 앱 URL로 바꿔주세요.
+</div>
+
+<div class="phone-wrap">
+  <div id="loadingBar" class="loading-bar">
+    <div class="spinner"></div>불러오는 중...
+  </div>
+
+  <div id="feedView" class="view active">
+    <div id="feedPosts"></div>
+  </div>
+
+  <div id="gridView" class="view">
+    <div class="profile-header">
+      <div class="profile-top">
+        <img id="profileAvatar" class="avatar lg" src="">
+        <div class="profile-stats">
+          <div><div class="stat-num" id="postCount">0</div><div class="stat-label">게시물</div></div>
+        </div>
+      </div>
+      <div class="profile-username" id="profileUsername"></div>
+      <div class="profile-bio" id="profileBio"></div>
+    </div>
+    <div class="grid-divider"></div>
+    <div id="gridPosts" class="grid"></div>
+  </div>
+
+  <div id="emptyState" class="empty-state" style="display:none;">
+    <div class="big">🖼️</div>
+    첫 게시물을 올려서<br>피드가 어떻게 보이는지 확인해보세요
+    <div><button id="emptyUploadBtn">＋ 게시물 올리기</button></div>
+  </div>
+</div>
+
+<!-- 업로드 모달 -->
+<div id="uploadModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>새 게시물</h2>
+    <div id="fileDrop" class="file-drop">탭해서 사진 선택 (카메라 또는 갤러리)</div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none;">
+    <div id="previewBox" class="preview-box" style="display:none;"><img id="previewImg"></div>
+    <label>캡션</label>
+    <textarea id="captionInput" placeholder="문구를 입력하세요..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelUpload">취소</button>
+      <button class="btn-primary" id="submitUpload" disabled>게시</button>
+    </div>
+  </div>
+</div>
+
+<!-- 설정 모달 -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>프로필 설정</h2>
+    <div class="avatar-picker">
+      <img id="settingsAvatarPreview" class="avatar lg" src="">
+      <button class="btn-secondary" id="changeAvatarBtn" style="flex:1;">프로필 사진 변경</button>
+      <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+    </div>
+    <label>사용자 이름</label>
+    <input type="text" id="usernameInput" placeholder="my.ai.influencer">
+    <label>소개</label>
+    <textarea id="bioInput" placeholder="한 줄 소개..."></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelSettings">취소</button>
+      <button class="btn-primary" id="saveSettings">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 게시물 옵션 모달 (수정/삭제) -->
+<div id="postOptionsModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>게시물 옵션</h2>
+    <div class="modal-actions" style="flex-direction:column;">
+      <button class="btn-secondary" id="editCaptionBtn">캡션 수정</button>
+      <button class="btn-danger" id="deletePostBtn">삭제</button>
+      <button class="btn-secondary" id="cancelPostOptions">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 캡션 수정 모달 -->
+<div id="editCaptionModal" class="modal-overlay hidden">
+  <div class="modal">
+    <h2>캡션 수정</h2>
+    <textarea id="editCaptionInput"></textarea>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="cancelEditCaption">취소</button>
+      <button class="btn-primary" id="saveEditCaption">저장</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script>
+/* ======================================================
+   설정: 여기에 배포한 Apps Script 웹 앱 URL을 붙여넣으세요
+   ====================================================== */
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzk6B0bB0eMps7em2sCzX5wtXZhlFcpaxyETCAR5HT77GVqumYVop0D5PmcRjRDjDKQ/exec';
+
+let posts = [];
+let settings = { username: 'my.ai.influencer', avatarUrl: '', bio: '' };
+let pendingImageBase64 = null;
+let pendingAvatarBase64 = null;
+let activePostId = null;
+
+const $ = (id) => document.getElementById(id);
+
+function isConfigured() {
+  return SCRIPT_URL && SCRIPT_URL.indexOf('PASTE_YOUR') === -1;
+}
+
+/* ---------- 네트워크 ---------- */
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+    const script = document.createElement('script');
+    window[cbName] = (data) => {
+      resolve(data);
+      delete window[cbName];
+      script.remove();
+    };
+    script.onerror = () => {
+      delete window[cbName];
+      reject(new Error('네트워크 오류'));
+    };
+    script.src = url + (url.indexOf('?') > -1 ? '&' : '?') + 'callback=' + cbName;
+    document.body.appendChild(script);
+  });
+}
+
+async function post(action, payload) {
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ action }, payload))
+  });
+  return res.json();
+}
+
+/* ---------- 데이터 로드 ---------- */
+
+async function loadData() {
+  if (!isConfigured()) {
+    $('configBanner').style.display = 'block';
+    $('loadingBar').style.display = 'none';
+    renderAll();
+    return;
+  }
+  $('loadingBar').style.display = 'block';
+  try {
+    const data = await jsonp(SCRIPT_URL + '?action=list');
+    if (data.success) {
+      posts = data.posts || [];
+      settings = data.settings || settings;
+    } else {
+      toast('불러오기 실패: ' + data.error);
+    }
+  } catch (e) {
+    toast('연결 실패. SCRIPT_URL 설정을 확인하세요.');
+  }
+  $('loadingBar').style.display = 'none';
+  renderAll();
+}
+
+/* ---------- 렌더링 ---------- */
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return '방금 전';
+  if (min < 60) return min + '분 전';
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return hr + '시간 전';
+  const day = Math.floor(hr / 24);
+  if (day < 7) return day + '일 전';
+  const wk = Math.floor(day / 7);
+  if (wk < 5) return wk + '주 전';
+  return new Date(iso).toLocaleDateString('ko-KR');
+}
+
+function defaultAvatar(name) {
+  const initial = (name || '?').trim().charAt(0).toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#dbdbdb"/><text x="50%" y="54%" font-family="sans-serif" font-size="34" fill="#8e8e8e" text-anchor="middle">${initial}</text></svg>`;
+  return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+}
+
+function heartIcon() { return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.8 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>`; }
+function commentIcon() { return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`; }
+function shareIcon() { return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`; }
+function bookmarkIcon() { return `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`; }
+function moreIcon() { return `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>`; }
+
+function renderAll() {
+  const avatarUrl = settings.avatarUrl || defaultAvatar(settings.username);
+
+  // Feed
+  $('feedPosts').innerHTML = posts.map(p => `
+    <article class="post">
+      <div class="post-header">
+        <div class="post-header-left">
+          <img class="avatar" src="${avatarUrl}" onerror="this.src='${defaultAvatar(settings.username)}'">
+          <span class="username">${escapeHtml(settings.username)}</span>
+        </div>
+        <button class="icon-btn more-btn" data-id="${p.id}">${moreIcon()}</button>
+      </div>
+      <div class="post-image-wrap"><img class="post-image" src="${p.imageUrl}" loading="lazy"></div>
+      <div class="post-actions">
+        <div class="left-actions">${heartIcon()}${commentIcon()}${shareIcon()}</div>
+        ${bookmarkIcon()}
+      </div>
+      <div class="post-caption"><span class="username">${escapeHtml(settings.username)}</span> ${escapeHtml(p.caption)}</div>
+      <div class="post-time">${timeAgo(p.createdAt)}</div>
+    </article>
+  `).join('');
+
+  // Grid / profile
+  $('profileAvatar').src = avatarUrl;
+  $('profileAvatar').onerror = () => { $('profileAvatar').src = defaultAvatar(settings.username); };
+  $('profileUsername').textContent = settings.username;
+  $('profileBio').textContent = settings.bio || '';
+  $('postCount').textContent = posts.length;
+  $('gridPosts').innerHTML = posts.map(p => `
+    <div class="grid-item" data-id="${p.id}"><img src="${p.imageUrl}" loading="lazy"></div>
+  `).join('');
+
+  $('emptyState').style.display = posts.length ? 'none' : 'block';
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  $(currentView === 'feed' ? 'feedView' : 'gridView').style.display = posts.length || currentView === 'grid' ? 'block' : 'none';
+}
+
+/* ---------- 뷰 전환 ---------- */
+
+let currentView = 'feed';
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentView = btn.dataset.view;
+    renderAll();
+  });
+});
+
+/* ---------- 이미지 압축 ---------- */
+
+function fileToCompressedBase64(file, maxDim = 1080, quality = 0.85) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) { height = Math.round(height * (maxDim / width)); width = maxDim; }
+          else { width = Math.round(width * (maxDim / height)); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/* ---------- 업로드 모달 ---------- */
+
+function openUploadModal() {
+  pendingImageBase64 = null;
+  $('previewBox').style.display = 'none';
+  $('captionInput').value = '';
+  $('submitUpload').disabled = true;
+  $('uploadModal').classList.remove('hidden');
+}
+$('uploadBtn').addEventListener('click', openUploadModal);
+$('emptyUploadBtn').addEventListener('click', openUploadModal);
+$('cancelUpload').addEventListener('click', () => $('uploadModal').classList.add('hidden'));
+$('fileDrop').addEventListener('click', () => $('fileInput').click());
+
+$('fileInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  toast('이미지 처리 중...');
+  pendingImageBase64 = await fileToCompressedBase64(file);
+  $('previewImg').src = pendingImageBase64;
+  $('previewBox').style.display = 'block';
+  $('submitUpload').disabled = false;
+  hideToast();
+});
+
+$('submitUpload').addEventListener('click', async () => {
+  if (!pendingImageBase64) return;
+  if (!isConfigured()) { toast('먼저 SCRIPT_URL을 설정하세요.'); return; }
+  $('submitUpload').disabled = true;
+  $('submitUpload').textContent = '게시 중...';
+  try {
+    const data = await post('add', { image: pendingImageBase64, caption: $('captionInput').value });
+    if (data.success) {
+      posts.unshift(data.post);
+      renderAll();
+      $('uploadModal').classList.add('hidden');
+      toast('게시되었습니다.');
+    } else {
+      toast('실패: ' + data.error);
+    }
+  } catch (e) {
+    toast('업로드 실패: ' + e.message);
+  }
+  $('submitUpload').disabled = false;
+  $('submitUpload').textContent = '게시';
+});
+
+/* ---------- 설정 모달 ---------- */
+
+function openSettingsModal() {
+  pendingAvatarBase64 = null;
+  $('settingsAvatarPreview').src = settings.avatarUrl || defaultAvatar(settings.username);
+  $('usernameInput').value = settings.username;
+  $('bioInput').value = settings.bio || '';
+  $('settingsModal').classList.remove('hidden');
+}
+$('settingsBtn').addEventListener('click', openSettingsModal);
+$('cancelSettings').addEventListener('click', () => $('settingsModal').classList.add('hidden'));
+$('changeAvatarBtn').addEventListener('click', () => $('avatarInput').click());
+$('avatarInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  pendingAvatarBase64 = await fileToCompressedBase64(file, 400, 0.85);
+  $('settingsAvatarPreview').src = pendingAvatarBase64;
+});
+
+$('saveSettings').addEventListener('click', async () => {
+  if (!isConfigured()) { toast('먼저 SCRIPT_URL을 설정하세요.'); return; }
+  $('saveSettings').disabled = true;
+  try {
+    const data = await post('updateSettings', {
+      username: $('usernameInput').value.trim() || 'my.ai.influencer',
+      bio: $('bioInput').value,
+      avatarBase64: pendingAvatarBase64
+    });
+    if (data.success) {
+      settings = data.settings;
+      renderAll();
+      $('settingsModal').classList.add('hidden');
+      toast('프로필이 저장되었습니다.');
+    } else {
+      toast('실패: ' + data.error);
+    }
+  } catch (e) {
+    toast('저장 실패: ' + e.message);
+  }
+  $('saveSettings').disabled = false;
+});
+
+/* ---------- 게시물 옵션 (수정/삭제) ---------- */
+
+document.addEventListener('click', (e) => {
+  const moreBtn = e.target.closest('.more-btn');
+  const gridItem = e.target.closest('.grid-item');
+  if (moreBtn) {
+    activePostId = moreBtn.dataset.id;
+    $('postOptionsModal').classList.remove('hidden');
+  } else if (gridItem) {
+    activePostId = gridItem.dataset.id;
+    $('postOptionsModal').classList.remove('hidden');
+  }
+});
+
+$('cancelPostOptions').addEventListener('click', () => $('postOptionsModal').classList.add('hidden'));
+
+$('deletePostBtn').addEventListener('click', async () => {
+  if (!activePostId) return;
+  if (!confirm('이 게시물을 삭제할까요?')) return;
+  try {
+    const data = await post('delete', { id: activePostId });
+    if (data.success) {
+      posts = posts.filter(p => p.id !== activePostId);
+      renderAll();
+      toast('삭제되었습니다.');
+    } else {
+      toast('실패: ' + data.error);
+    }
+  } catch (e) {
+    toast('삭제 실패: ' + e.message);
+  }
+  $('postOptionsModal').classList.add('hidden');
+});
+
+$('editCaptionBtn').addEventListener('click', () => {
+  const p = posts.find(p => p.id === activePostId);
+  $('editCaptionInput').value = p ? p.caption : '';
+  $('postOptionsModal').classList.add('hidden');
+  $('editCaptionModal').classList.remove('hidden');
+});
+$('cancelEditCaption').addEventListener('click', () => $('editCaptionModal').classList.add('hidden'));
+$('saveEditCaption').addEventListener('click', async () => {
+  const caption = $('editCaptionInput').value;
+  try {
+    const data = await post('updateCaption', { id: activePostId, caption });
+    if (data.success) {
+      const p = posts.find(p => p.id === activePostId);
+      if (p) p.caption = caption;
+      renderAll();
+      $('editCaptionModal').classList.add('hidden');
+      toast('캡션이 수정되었습니다.');
+    } else {
+      toast('실패: ' + data.error);
+    }
+  } catch (e) {
+    toast('수정 실패: ' + e.message);
+  }
+});
+
+/* ---------- 토스트 ---------- */
+
+let toastTimer = null;
+function toast(msg) {
+  $('toast').textContent = msg;
+  $('toast').classList.remove('hidden');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 2500);
+}
+function hideToast() { $('toast').classList.add('hidden'); }
+
+/* ---------- 시작 ---------- */
+loadData();
+</script>
+</body>
+</html>
